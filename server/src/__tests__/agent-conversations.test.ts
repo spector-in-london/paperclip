@@ -56,6 +56,7 @@ import {
   buildPaperclipTaskMarkdown,
   buildPaperclipWakePayload,
   heartbeatService,
+  restoreConversationReplayAfterSessionReset,
 } from "../services/heartbeat.js";
 
 const support = await getEmbeddedPostgresTestSupport();
@@ -137,6 +138,42 @@ const support = await getEmbeddedPostgresTestSupport();
           .returning()
       )[0]!;
     }
+    it("replays earlier chat after a stored session is invalidated by config", async () => {
+      const issue = await create();
+      await issueService(db).addComment(issue.id, "Remember the testimony receipt", {
+        userId: "local-board",
+      });
+      const wake = await issueService(db).addComment(issue.id, "Are you there?", {
+        userId: "local-board",
+      });
+      const context: Record<string, unknown> = {
+        paperclipTaskMarkdown: "Current chat wake",
+        paperclipTaskMarkdownCompact: "Compact chat wake",
+      };
+      const input = {
+        db,
+        companyId,
+        issueId: issue.id,
+        wakeCommentId: wake.id,
+        issue,
+        hadTaskSession: true,
+        resetTaskSession: true,
+        context,
+      };
+
+      expect(await restoreConversationReplayAfterSessionReset(input)).toBe(true);
+      expect(context.paperclipTaskMarkdown).toContain("Remember the testimony receipt");
+      expect(context.paperclipTaskMarkdown).not.toContain("Are you there?");
+      expect(context.paperclipTaskMarkdownCompact).toContain("Remember the testimony receipt");
+
+      const resumedContext = { paperclipTaskMarkdown: "Current chat wake" };
+      expect(await restoreConversationReplayAfterSessionReset({
+        ...input,
+        resetTaskSession: false,
+        context: resumedContext,
+      })).toBe(false);
+      expect(resumedContext.paperclipTaskMarkdown).toBe("Current chat wake");
+    });
     it("atomically resolves one task per person and agent and excludes it from ordinary lists", async () => {
       const user = randomUUID();
       expect(

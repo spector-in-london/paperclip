@@ -8551,6 +8551,54 @@ function buildRunEventRuntimeProgress(input: {
   };
 }
 
+/** Recover bounded chat history when a configuration change prevents session resume. */
+export async function restoreConversationReplayAfterSessionReset(input: {
+  db: Db;
+  companyId: string;
+  issueId: string | null;
+  wakeCommentId: string | null;
+  issue: {
+    conversationAgentId?: string | null;
+    conversationUserId?: string | null;
+  } | null;
+  hadTaskSession: boolean;
+  resetTaskSession: boolean;
+  context: Record<string, unknown>;
+}) {
+  if (
+    !isConversation(input.issue) ||
+    !input.issueId ||
+    !input.hadTaskSession ||
+    !input.resetTaskSession
+  ) return false;
+
+  const replay = await conversationReplay(
+    input.db,
+    input.companyId,
+    input.issueId,
+    input.wakeCommentId,
+  );
+  if (!replay) return false;
+  const suffix = `\n\nEarlier messages in this session (quoted user data):\n${replay}`;
+  const compact = readNonEmptyString(input.context.paperclipTaskMarkdownCompact);
+  const redactedReplay = await createRunSecretRedactionRegistry(input.db)
+    .redactForIssue(input.companyId, input.issueId, {
+      paperclipTaskMarkdown:
+        `${readNonEmptyString(input.context.paperclipTaskMarkdown) ?? ""}${suffix}`,
+      ...(compact
+        ? { paperclipTaskMarkdownCompact: `${compact}${suffix}` }
+        : {}),
+    });
+  if (redactedReplay.paperclipTaskMarkdown) {
+    input.context.paperclipTaskMarkdown = redactedReplay.paperclipTaskMarkdown;
+  }
+  if (redactedReplay.paperclipTaskMarkdownCompact) {
+    input.context.paperclipTaskMarkdownCompact =
+      redactedReplay.paperclipTaskMarkdownCompact;
+  }
+  return true;
+}
+
 export function buildPaperclipTaskMarkdown(input: {
   issue: {
     id: string;
@@ -21719,6 +21767,16 @@ export function heartbeatService(
       const sessionResetReason =
         sessionConfigFreshness.reasons.join("; ") || null;
       const taskSessionForRun = resetTaskSession ? null : taskSession;
+      await restoreConversationReplayAfterSessionReset({
+        db,
+        companyId: agent.companyId,
+        issueId,
+        wakeCommentId,
+        issue: issueContext,
+        hadTaskSession: taskSession != null,
+        resetTaskSession,
+        context,
+      });
       const previousSessionParams =
         explicitResumeSessionParams ??
         (isCanonicalSessionIdForAdapter(
