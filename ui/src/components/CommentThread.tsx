@@ -94,6 +94,9 @@ interface CommentThreadProps {
   issueStatus?: string;
   agentMap?: Map<string, Agent>;
   currentUserId?: string | null;
+  /** Directory display names by user id; human comments show the signed-in
+   * person instead of a hardcoded "You" (ROG-370). */
+  userLabelMap?: ReadonlyMap<string, string> | null;
   imageUploadHandler?: (file: File) => Promise<string>;
   /** Callback to attach an image file to the parent issue (not inline in a comment). */
   onAttachImage?: (file: File) => Promise<void>;
@@ -298,6 +301,7 @@ function CommentCard({
   comment,
   agentMap,
   companyId,
+  userLabelMap,
   projectId,
   feedbackVote = null,
   feedbackDataSharingPreference = "prompt",
@@ -311,6 +315,7 @@ function CommentCard({
   comment: CommentWithRunMeta;
   agentMap?: Map<string, Agent>;
   companyId?: string | null;
+  userLabelMap?: ReadonlyMap<string, string> | null;
   projectId?: string | null;
   feedbackVote?: FeedbackVoteValue | null;
   feedbackDataSharingPreference?: FeedbackDataSharingPreference;
@@ -351,7 +356,16 @@ function CommentCard({
             />
           </Link>
         ) : (
-          <Identity name="You" size="sm" />
+          <Identity
+            // ROG-370: show the signed-in directory name instead of a
+            // hardcoded "You", so cross-machine readers see the real owner.
+            name={
+              (comment.authorUserId
+                ? userLabelMap?.get(comment.authorUserId)
+                : undefined) || "You"
+            }
+            size="sm"
+          />
         )}
         <span className="flex items-center gap-1.5">
           {isQueued ? (
@@ -550,6 +564,7 @@ const TimelineList = memo(function TimelineList({
   currentUserId,
   companyId,
   projectId,
+  userLabelMap,
   onApproveApproval,
   onRejectApproval,
   pendingApprovalAction,
@@ -566,6 +581,7 @@ const TimelineList = memo(function TimelineList({
   currentUserId?: string | null;
   companyId?: string | null;
   projectId?: string | null;
+  userLabelMap?: ReadonlyMap<string, string> | null;
   onApproveApproval?: (approvalId: string) => Promise<void>;
   onRejectApproval?: (approvalId: string) => Promise<void>;
   pendingApprovalAction?: {
@@ -700,6 +716,7 @@ const TimelineList = memo(function TimelineList({
             comment={comment}
             agentMap={agentMap}
             companyId={companyId}
+            userLabelMap={userLabelMap}
             projectId={projectId}
             feedbackVote={feedbackVoteByTargetId?.get(comment.id) ?? null}
             feedbackDataSharingPreference={feedbackDataSharingPreference}
@@ -734,6 +751,7 @@ export function CommentThread({
   issueStatus,
   agentMap,
   currentUserId,
+  userLabelMap,
   imageUploadHandler,
   onAttachImage,
   draftKey,
@@ -957,6 +975,7 @@ export function CommentThread({
         currentUserId={currentUserId}
         companyId={companyId}
         projectId={projectId}
+        userLabelMap={userLabelMap}
         onApproveApproval={onApproveApproval}
         onRejectApproval={onRejectApproval}
         pendingApprovalAction={pendingApprovalAction}
@@ -996,6 +1015,7 @@ export function CommentThread({
                 comment={comment}
                 agentMap={agentMap}
                 companyId={companyId}
+                userLabelMap={userLabelMap}
                 projectId={projectId}
                 highlightCommentId={highlightCommentId}
                 queued

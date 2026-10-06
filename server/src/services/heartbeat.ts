@@ -148,6 +148,7 @@ import {
   companySkillVersions,
   companySkills as companySkillsTable,
   companies,
+  authUsers,
   completionContracts,
   costEvents,
   documentAnnotationComments,
@@ -7765,6 +7766,26 @@ export async function buildPaperclipWakePayload(input: {
   const commentsById = new Map(
     commentRows.map((comment) => [comment.id, comment]),
   );
+  // Directory display name for each human author, so agents see the signed-in
+  // person (e.g. "Brian Spector") instead of an opaque authorUserId.
+  const wakeAuthorUserIds = [
+    ...new Set(
+      commentRows
+        .map((row) => row.authorUserId)
+        .filter((id): id is string => typeof id === "string"),
+    ),
+  ];
+  const wakeAuthorNameById = new Map(
+    wakeAuthorUserIds.length
+      ? await input.db
+          .select({ id: authUsers.id, name: authUsers.name })
+          .from(authUsers)
+          .where(inArray(authUsers.id, wakeAuthorUserIds))
+          .then((rows) =>
+            rows.map((row) => [row.id, row.name] as const),
+          )
+      : [],
+  );
   const issueDescription = conversationMode ? null : issueSummary?.description ?? null;
   const issueDescriptionTruncated =
     issueDescription !== null &&
@@ -7822,6 +7843,10 @@ export async function buildPaperclipWakePayload(input: {
       authorType:
         row.authorType ??
         (row.authorAgentId ? "agent" : row.authorUserId ? "user" : "system"),
+      authorUserId: row.authorUserId ?? null,
+      authorName: row.authorUserId
+        ? (wakeAuthorNameById.get(row.authorUserId) ?? null)
+        : null,
       body,
       bodyTruncated,
       presentation: deletedAt ? null : (safeRow.presentation ?? null),
@@ -7836,7 +7861,11 @@ export async function buildPaperclipWakePayload(input: {
       author: row.authorAgentId
         ? { type: "agent", id: row.authorAgentId }
         : row.authorUserId
-          ? { type: "user", id: row.authorUserId }
+          ? {
+              type: "user",
+              id: row.authorUserId,
+              name: wakeAuthorNameById.get(row.authorUserId) ?? null,
+            }
           : { type: "system", id: null },
     });
   }

@@ -3136,6 +3136,7 @@ export function TaskChatThread(props: TaskChatThreadProps) {
                       agentMap={agentMap}
                       modelAgents={agentMap}
                       userProfileMap={userProfileMap}
+                      currentUserId={currentUserId}
                       currentAssigneeValue={currentAssigneeValue}
                       companyId={companyId}
                       assigneeAdapterOverrides={assigneeAdapterOverrides}

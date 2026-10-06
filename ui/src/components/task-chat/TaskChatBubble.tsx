@@ -223,12 +223,23 @@ function TaskChatBubbleContent({
       )}
     >
       {beforeTurn ? <div className="w-full pb-1">{beforeTurn}</div> : null}
-      {!isHuman && item.authorName && !hideAgentIdentity ? (
-        <TaskChatAgentIdentity
-          agentName={item.authorName}
-          agentIcon={item.agentIcon}
-          agent={item.agent}
-        />
+      {item.authorName && (isHuman || !hideAgentIdentity) ? (
+        isHuman ? (
+          // ROG-370: show the signed-in human's directory name above their
+          // bubble, so a person at another human's machine sees the owner.
+          <span
+            className="px-1 text-sm font-semibold text-foreground"
+            data-testid="task-chat-human-identity"
+          >
+            {item.authorName}
+          </span>
+        ) : (
+          <TaskChatAgentIdentity
+            agentName={item.authorName}
+            agentIcon={item.agentIcon}
+            agent={item.agent}
+          />
+        )
       ) : null}
       {bodyText.length > 0 ? (
         <div

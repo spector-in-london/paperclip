@@ -123,6 +123,8 @@ interface TaskChatComposerProps {
     string,
     { label: string; image: string | null }
   > | null;
+  /** Signed-in board user; used to show which account will own the post (ROG-370). */
+  currentUserId?: string | null;
   currentAssigneeValue?: string;
   onPendingAssigneeChange?: (value: string | null) => void;
   issueStatus?: string;
@@ -377,6 +379,7 @@ export function TaskChatComposer({
   companyId,
   assigneeAdapterOverrides,
   userProfileMap,
+  currentUserId,
   currentAssigneeValue = "",
   onPendingAssigneeChange,
   issueStatus,
@@ -1243,12 +1246,33 @@ export function TaskChatComposer({
           ) : null}
         </div>
       ) : null}
+<<<<<<< HEAD
       {!takeoverVisible && (pendingTakeover || takeover) ? (
         <button
           type="button"
           className="mb-2 flex w-full items-center gap-2 rounded-md bg-muted/50 px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           onClick={pendingTakeover?.onOpen}
           data-testid="task-chat-pending-input-indicator"
+=======
+      {currentUserId ? (
+        // ROG-370: show which signed-in account will own the next post, so a
+        // person at another human's machine sees the owning account before send.
+        <p
+          className="mb-1 px-1 text-xs text-muted-foreground"
+          data-testid="task-chat-composer-posting-as"
+        >
+          Posting as{" "}
+          <span className="font-semibold text-foreground">
+            {userProfileMap?.get(currentUserId)?.label ?? currentUserId.slice(0, 5)}
+          </span>
+        </p>
+      ) : null}
+      {takeoverVisible && takeover ? (
+        <section
+          className="relative"
+          aria-label={takeover.label}
+          data-testid="task-chat-composer-takeover"
+>>>>>>> 2395e9a6 (feat: show signed-in human name on comments, chat and wake payloads)
         >
           <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
           <span className="min-w-0 flex-1 truncate">

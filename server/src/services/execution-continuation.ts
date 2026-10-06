@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle
 import { z } from "zod";
 import {
   agentWakeupRequests,
+  authUsers,
   heartbeatRuns,
   issueComments,
   issueRecoveryActions,
@@ -246,6 +247,28 @@ export async function buildExecutionContinuation(input: {
   // Missing source rows cannot silently become a claim of complete context.
   if (originCommentIds.some((id) => !rows.some((row) => row.id === id)))
     throw new Error("continuation_source_context_missing");
+  // Directory display name for each human comment author, so wake payloads
+  // carry the signed-in person's name (e.g. "Brian Spector") beside the id.
+  const authorNameById = new Map(
+    await db
+      .select({ id: authUsers.id, name: authUsers.name })
+      .from(authUsers)
+      .where(
+        inArray(
+          authUsers.id,
+          [
+            ...new Set(
+              rows
+                .map((row) => row.authorUserId)
+                .filter((id): id is string => typeof id === "string"),
+            ),
+          ],
+        ),
+      )
+      .then((userRows) =>
+        userRows.map((row) => [row.id, row.name] as const),
+      ),
+  );
   const messages = rows.map((row) => {
     const safe = input.exposeLowTrustRaw
       ? row
@@ -256,6 +279,7 @@ export async function buildExecutionContinuation(input: {
         row.authorType ??
         (row.authorUserId ? "user" : row.authorAgentId ? "agent" : "system"),
       authorId: row.authorUserId ?? row.authorAgentId,
+      authorName: row.authorUserId ? (authorNameById.get(row.authorUserId) ?? null) : null,
       createdByRunId: row.createdByRunId,
       body: row.deletedAt ? "" : safe.body,
       createdAt: row.createdAt.toISOString(),

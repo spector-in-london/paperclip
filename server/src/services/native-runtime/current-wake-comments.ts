@@ -4,6 +4,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
   assets,
+  authUsers,
   heartbeatRuns,
   issueAttachments,
   issueComments,
@@ -95,6 +96,7 @@ type CurrentWakeComment = {
   body: string;
   authorType: string | null;
   authorId: string | null;
+  authorName: string | null;
   createdAt: string | null;
   deletedAt: string | null;
   attachmentImportNotice: string | null;
@@ -452,6 +454,26 @@ async function currentWakeCommentsSnapshot(
     .orderBy(asc(issueAttachments.createdAt), asc(issueAttachments.id));
 
   const rowsById = new Map(rows.map((row) => [row.id, row]));
+  // Directory display name for each human author, resolved from the user
+  // table so the reader payload carries the signed-in person beside the id.
+  const authorUserIds = [
+    ...new Set(
+      rows
+        .map((row) => row.authorUserId)
+        .filter((id): id is string => typeof id === "string"),
+    ),
+  ];
+  const authorNameById = new Map(
+    authorUserIds.length
+      ? await db
+          .select({ id: authUsers.id, name: authUsers.name })
+          .from(authUsers)
+          .where(inArray(authUsers.id, authorUserIds))
+          .then((userRows) =>
+            userRows.map((row) => [row.id, row.name] as const),
+          )
+      : [],
+  );
   const omissionsByCommentId = new Map(
     binding.attachmentOmissions.map((omission) => [
       omission.commentId,
@@ -488,6 +510,7 @@ async function currentWakeCommentsSnapshot(
         body: "",
         authorType: null,
         authorId: null,
+        authorName: null,
         createdAt: null,
         deletedAt: null,
         attachmentImportNotice: attachmentImportNotice(
@@ -513,6 +536,9 @@ async function currentWakeCommentsSnapshot(
         row.authorType ??
         (row.authorAgentId ? "agent" : row.authorUserId ? "user" : "system"),
       authorId: row.authorAgentId ?? row.authorUserId ?? null,
+      authorName: row.authorUserId
+        ? (authorNameById.get(row.authorUserId) ?? null)
+        : null,
       createdAt: row.createdAt.toISOString(),
       deletedAt,
       attachmentImportNotice: deletedAt

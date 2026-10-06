@@ -10,7 +10,7 @@ import type {
 } from "@assistant-ui/react";
 import type { Agent, IssueComment } from "@paperclipai/shared";
 import type { ActiveRunForIssue, LiveRunForIssue } from "../api/heartbeats";
-import { formatAssigneeUserLabel } from "./assignees";
+import { formatAssigneeUserLabel, formatUserLabel } from "./assignees";
 import { isOperatorInterruptedRun } from "./interrupt-handoff";
 import {
   buildIssueThreadInteractionSummary,
@@ -547,7 +547,9 @@ function authorNameForComment(
   if (!authorUserId) return options?.isSystemNotice ? "Paperclip" : "You";
   const userLabel = userLabelMap?.get(authorUserId)?.trim();
   if (userLabel) return userLabel;
-  return formatAssigneeUserLabel(authorUserId, currentUserId, userLabelMap) ?? "You";
+  // Show the directory name even for the signed-in viewer's own posts, so a
+  // person at another human's machine always sees the owning account (ROG-370).
+  return formatUserLabel(authorUserId, userLabelMap) ?? "You";
 }
 
 function formatStatusLabel(status: string) {
