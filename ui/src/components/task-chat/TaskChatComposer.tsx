@@ -1246,14 +1246,6 @@ export function TaskChatComposer({
           ) : null}
         </div>
       ) : null}
-<<<<<<< HEAD
-      {!takeoverVisible && (pendingTakeover || takeover) ? (
-        <button
-          type="button"
-          className="mb-2 flex w-full items-center gap-2 rounded-md bg-muted/50 px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          onClick={pendingTakeover?.onOpen}
-          data-testid="task-chat-pending-input-indicator"
-=======
       {currentUserId ? (
         // ROG-370: show which signed-in account will own the next post, so a
         // person at another human's machine sees the owning account before send.
@@ -1267,12 +1259,12 @@ export function TaskChatComposer({
           </span>
         </p>
       ) : null}
-      {takeoverVisible && takeover ? (
-        <section
-          className="relative"
-          aria-label={takeover.label}
-          data-testid="task-chat-composer-takeover"
->>>>>>> 2395e9a6 (feat: show signed-in human name on comments, chat and wake payloads)
+      {!takeoverVisible && (pendingTakeover || takeover) ? (
+        <button
+          type="button"
+          className="mb-2 flex w-full items-center gap-2 rounded-md bg-muted/50 px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          onClick={pendingTakeover?.onOpen}
+          data-testid="task-chat-pending-input-indicator"
         >
           <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
           <span className="min-w-0 flex-1 truncate">
