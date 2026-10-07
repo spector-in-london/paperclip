@@ -184,3 +184,14 @@ test("testEnvironment does not warn about missing API keys when Hermes config pr
     expect(result.status).toBe("pass");
   });
 });
+
+
+test("preserves an explicit named custom provider over model inference", () => {
+  expect(resolveProvider({explicitProvider: "custom:example-gateway", model: "@cf/zai-org/glm-5.3"})).toEqual({provider: "custom:example-gateway", resolvedFrom: "adapterConfig"});
+});
+test("keeps a named custom provider ahead of matching detected config", () => {
+  expect(resolveProvider({explicitProvider: "custom:team_1.v2", model: "glm-5.3", detectedModel: "glm-5.3", detectedProvider: "openrouter"})).toEqual({provider: "custom:team_1.v2", resolvedFrom: "adapterConfig"});
+});
+test("does not accept an empty custom provider name", () => {
+  expect(resolveProvider({explicitProvider: "custom:", model: "glm-5.3"})).toEqual({provider: "zai", resolvedFrom: "modelInference"});
+});
