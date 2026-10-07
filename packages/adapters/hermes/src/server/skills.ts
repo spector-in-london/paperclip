@@ -25,13 +25,34 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-function resolveHermesHome(config: Record<string, unknown>): string {
+/**
+ * Adapter env values can arrive either already resolved (plain strings) or as
+ * raw persisted bindings. A `plain` binding still carries its literal value;
+ * secret bindings are intentionally never resolved here and yield null so the
+ * caller falls back instead of reading a placeholder as a path.
+ */
+function envPlainString(value: unknown): string | null {
+  if (typeof value === "string") return asString(value);
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    if (record.type === "plain") return asString(record.value);
+  }
+  return null;
+}
+
+/**
+ * Resolve the Hermes home directory the same way the Hermes runtime does:
+ * `HERMES_HOME` when set (per-profile deployments bind it to the profile
+ * directory), otherwise `$HOME/.hermes`. Both variables accept a raw string
+ * or an unresolved `{ type: "plain", value }` binding.
+ */
+export function resolveHermesHome(config: Record<string, unknown>): string {
   const env =
     typeof config.env === "object" && config.env !== null && !Array.isArray(config.env)
       ? (config.env as Record<string, unknown>)
       : {};
-  const configuredHome = asString(env.HOME);
-  const hermesHome = asString(env.HERMES_HOME);
+  const configuredHome = envPlainString(env.HOME);
+  const hermesHome = envPlainString(env.HERMES_HOME);
   return hermesHome ? path.resolve(hermesHome) : path.join(configuredHome ? path.resolve(configuredHome) : os.homedir(), ".hermes");
 }
 
