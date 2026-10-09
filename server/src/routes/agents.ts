@@ -3380,7 +3380,17 @@ export function agentRoutes(
       let managed: Awaited<ReturnType<typeof prepareManagedAiRuntime>> | undefined;
       try {
         if (!target.executionTarget && target.fallbackChecks.length > 0) throw unprocessable("The agent environment is not available for adoption");
-        managed = await prepareManagedAiRuntime(db, { companyId, agentId, responsibleUserId: userId, adapterType, binding, config, allowUninstalledPersonal: newAgent, allowUninstalledShared, allowLegacyValidation: true });
+        // Adoption receives the persisted binding representation, unlike the
+        // adapter-test route's resolved runtime config. Resolve through the same
+        // audited secret service before probing; otherwise plain custom-provider
+        // and extension settings disappear from string-only adapter environments.
+        const { config: adoptionRuntimeConfig } = await secretsSvc.resolveAdapterConfigForRuntime(
+          companyId,
+          { ...config, env: stripAiAuthBindings(parseObject(config.env)) },
+          buildActorSecretContext(req, { consumerType: "system", consumerId: "ai_connection_adoption" }),
+          { adapterType, userSecretMediation: "owner_scoped" },
+        );
+        managed = await prepareManagedAiRuntime(db, { companyId, agentId, responsibleUserId: userId, adapterType, binding, config: adoptionRuntimeConfig, allowUninstalledPersonal: newAgent, allowUninstalledShared, allowLegacyValidation: true });
         const result = await testManagedEnvironment(adapterType, { companyId, adapterType, config: managed.config, executionTarget: target.executionTarget, environmentName: target.environmentName }, binding);
         if (result.status === "fail" || result.checks.some(check => check.code === ADAPTER_AUTH_MISSING_CHECK_CODE)) throw unprocessable("The selected AI connection failed validation in this agent’s environment. Run the agent test to see the failing checks.", {
           code: "ai_connection_validation_failed",
