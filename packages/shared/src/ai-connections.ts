@@ -127,6 +127,19 @@ export function isAiConnectionCompatible(
           : runnerProvider === "opencode"
             ? "opencode_local"
             : "unsupported";
+  // Pi speaks provider APIs directly; a provider CLI subscription token is
+  // not interchangeable with an API key. Responsible-user wire metadata may
+  // be stale, so the authoritative connection metadata is checked again by
+  // the service before resolving credentials.
+  if (adapterType === "pi_local") {
+    return (
+      (requirement.method === "api_key" ||
+        ("mode" in requirement && requirement.mode === "responsible_user")) &&
+      typeof model === "string" &&
+      model.startsWith(`${requirement.provider}/`) &&
+      model.length > requirement.provider.length + 1
+    );
+  }
   const methods = AI_CONNECTION_CAPABILITIES[requirement.provider].methods;
   const candidates = "mode" in requirement && requirement.mode === "responsible_user"
     ? Object.values(methods)
