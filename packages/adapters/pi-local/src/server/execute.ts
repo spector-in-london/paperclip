@@ -1,4 +1,5 @@
 import { createProviderStoppedBoundary } from "@paperclipai/adapter-utils/provider-stopped-boundary";
+import { buildPiRuntimeMcpEnv } from "./runtime-mcp-env.js";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -278,6 +279,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const env: Record<string, string> = {
     ...buildPaperclipEnv(agent),
     ...buildRuntimeToolsEnv(ctx.runtimeTools),
+    ...buildPiRuntimeMcpEnv(ctx.runtimeMcp),
   };
   env.PAPERCLIP_RUN_ID = runId;
 
